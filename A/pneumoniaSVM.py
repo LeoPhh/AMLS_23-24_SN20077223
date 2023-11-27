@@ -80,7 +80,7 @@ class PneumoniaSVMClassifier:
 
 
 if __name__ == "__main__":
-    classifier = PneumoniaSVMClassifier('./Datasets/pneumoniamnist.npz')
+    classifier = PneumoniaSVMClassifier('../Datasets/pneumoniamnist.npz')
     classifier.train_model()
     classifier.validate_model()
     classifier.test_model()
