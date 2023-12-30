@@ -65,7 +65,7 @@ class PneumoniaCNNClassifier:
         self.models = []
 
         # Prepare cross validation folds with shuffling
-        cross_validation = StratifiedKFold(n_splits=folds, shuffle=False)
+        cross_validation = StratifiedKFold(n_splits=folds, shuffle=True)
         cross_validation_folds = cross_validation.split(self.training_images, self.training_labels)
 
         # In the tuple (train_index, val_index), we don't use the val_index because every fold uses the same validation dataset
@@ -89,20 +89,42 @@ class PneumoniaCNNClassifier:
         self.test_model(used_cross_validation=True)
 
 
-    # Evaluate the loss and the accuracy of the trained CNN model
+    # Method to evaluate the loss and the accuracy of the trained CNN model
     def test_model(self, used_cross_validation):
-        # Print accuracies of all models if cross validation was used
+        # Calculate average accuracy of all models if cross validation was used
         if used_cross_validation:
-            for fold, model in enumerate(self.models):
-                test_loss, test_accuracy = model.evaluate(self.testing_images, self.testing_labels, verbose=0)
-                print(f'Fold {fold + 1} - Test Loss: {test_loss:.4f}, Test accuracy: {100 * test_accuracy:.2f}%')
-        # Else print accuracy of just the one model if cross validation was not used
+            # Empty array to store the ensemble predictions (predictions from all models)
+            ensemble_predictions = []
+
+            # Iterate through all the models and obtain their predictions
+            for model in self.models:
+                current_fold_predictions = model.predict(self.testing_images, verbose=0)
+                ensemble_predictions.append(current_fold_predictions)
+
+            # Calculate the column-wise average of each prediction i.e. the average prediction for each image, from all the models
+            averaged_predictions = np.mean(ensemble_predictions, axis=0)
+
+            # Round the predictions to either 0 or 1
+            rounded_average_predictions = np.round(averaged_predictions)
+
+            # Calculate the total averaged accuracy by checking how many predicted labels are equal
+            # to the correct ground truth labels, and then print the accuracy.
+            ensemble_accuracy = np.mean(rounded_average_predictions == self.testing_labels)
+            print(f'Averaged test accuracy of all models: {100 * ensemble_accuracy:.2f}%')
+
+
+        # Else calculate accuracy of just the one model if cross validation was not used
         else:
-            test_loss, test_accuracy = self.model.evaluate(self.testing_images, self.testing_labels, verbose=0)
-            print(f'Test loss: {test_loss:.4f}, Test accuracy: {100 * test_accuracy:.2f}%')
+            # Calculate accuracy using same methodology from above
+            predictions = self.model.predict(self.testing_images, verbose=0)
+            rounded_predictions = np.round(predictions)
+            model_accuracy = np.mean(rounded_predictions == self.testing_labels)
+
+            # Display the test accuracy of the model
+            print(f'Test accuracy of one model: {100 * model_accuracy:.2f}%')
 
 
 if __name__ == "__main__":
     # Example usage with cross-validation
     classifier_with_cross_val = PneumoniaCNNClassifier('./Datasets/pneumoniamnist.npz')
-    classifier_with_cross_val.train_with_cross_validation(epochs=20, batch_size=32, folds=10)
+    classifier_with_cross_val.train_with_cross_validation(epochs=15, batch_size=32, folds=10)
