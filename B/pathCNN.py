@@ -1,46 +1,70 @@
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, BatchNormalization, Dropout
-from sklearn.model_selection import StratifiedKFold
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from keras.optimizers.legacy import Adam
+from keras.utils import to_categorical
+from sklearn.model_selection import KFold
 
-class PneumoniaCNNClassifier:
+class PathCNNClassifier:
     def __init__(self, dataset_path):
-        self.load_dataset(dataset_path)
+        self.dataset_path = dataset_path
+        self.load_dataset()
 
-    # Method to load the dataset and separate the training, validation and testing images/labels
-    def load_dataset(self, dataset_path):
-        pneumonia_dataset = np.load(dataset_path)
+    # Load the dataset and concatenate training and validation data
+    def load_dataset(self):
+        path_dataset = np.load(self.dataset_path)
 
-        # Create variables for the normalised images
-        self.training_images = self.normalize_images(pneumonia_dataset['train_images'])
-        self.validation_images = self.normalize_images(pneumonia_dataset['val_images'])
-        self.testing_images = self.normalize_images(pneumonia_dataset['test_images'])
+        # Training images and labels
+        self.training_images = self.normalize_images(path_dataset['train_images'])
+        self.training_labels = to_categorical(path_dataset['train_labels'], num_classes=9)
 
-        # Create variables for the labels
-        self.training_labels = pneumonia_dataset['train_labels']
-        self.validation_labels = pneumonia_dataset['val_labels']
-        self.testing_labels = pneumonia_dataset['test_labels']
+        # Validation images and labels
+        self.validation_images = self.normalize_images(path_dataset['val_images'])
+        self.validation_labels = to_categorical(path_dataset['val_labels'], num_classes=9)
 
-        # Extract the image height, width and number of channels to be used in the CNN
-        self.image_height, self.image_width = self.training_images[0].shape
-        self.number_of_channels = 1  # Because they are grayscale images
+        # Testing images and labels
+        self.testing_images = self.normalize_images(path_dataset['test_images'])
+        self.testing_labels = to_categorical(path_dataset['test_labels'], num_classes=9)
+
+        self.image_height, self.image_width, self.number_of_channels = self.training_images[0].shape
+
+    # Method to print the unique labels and thair count
+    def print_individual_label_counts(self):
+        unique_values, counts = np.unique(self.training_labels.flatten(), return_counts=True)
+
+        for value, count in zip(unique_values, counts):
+            print(f"{value}: {count}")
 
     # Method to normalize images to have value between 0 and 1
     def normalize_images(self, images):
         return images.astype('float32') / 255.0
 
-    # Method to build CNN model and add all the layers
+    # Build CNN model and add all the layers
     def build_model(self):
         model = Sequential()
+    
+        # Convolutional layers
         model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(self.image_height, self.image_width, self.number_of_channels)))
         model.add(MaxPooling2D((2, 2)))
+
+        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(MaxPooling2D((2, 2)))
+
+        model.add(Conv2D(128, (3, 3), activation='relu'))
+        model.add(MaxPooling2D((2, 2)))
+        
+        # Fully connected layers
         model.add(Flatten())
+        model.add(Dense(256, activation='relu'))
+        model.add(Dropout(0.5))  # Introduce dropout for regularization
         model.add(Dense(128, activation='relu'))
-        model.add(Dense(1, activation='sigmoid'))
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        model.add(Dense(9, activation='softmax'))
+
+        model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+        
         return model
 
-    # Method to train the CNN model without cross-validation
+    # Train the CNN model without cross-validation
     def train_without_cross_validation(self, epochs, batch_size):
         print("Training without cross-validation")
 
@@ -65,7 +89,7 @@ class PneumoniaCNNClassifier:
         self.models = []
 
         # Prepare cross validation folds with shuffling
-        cross_validation = StratifiedKFold(n_splits=folds, shuffle=True)
+        cross_validation = KFold(n_splits=folds, shuffle=True)
         cross_validation_folds = cross_validation.split(self.training_images, self.training_labels)
 
         # In the tuple (train_index, val_index), we don't use the val_index because every fold uses the same validation dataset
@@ -83,12 +107,12 @@ class PneumoniaCNNClassifier:
                 batch_size=batch_size,
                 validation_data=(self.validation_images, self.validation_labels)
             )
+
             self.models.append(self.model)
 
         # Evaluate the model through the test accuracy
         self.test_model(used_cross_validation=True)
-
-
+    
     # Method to evaluate the loss and the accuracy of the trained CNN model
     def test_model(self, used_cross_validation):
         # Calculate average accuracy of all models if cross validation was used
@@ -104,8 +128,10 @@ class PneumoniaCNNClassifier:
             # Calculate the column-wise average of each prediction i.e. the average prediction for each image, from all the models
             averaged_predictions = np.mean(ensemble_predictions, axis=0)
 
-            ensemble_accuracy = self.get_accuracy(averaged_predictions)
-            print(f'Averaged test accuracy of all models: {100 * ensemble_accuracy:.2f}%')
+            # Calculate the accuracy
+            accuracy = self.get_accuracy(averaged_predictions)
+
+            print(f'Averaged test accuracy of all models: {100 * accuracy:.2f}%')
 
 
         # Else calculate accuracy of just the one model if cross validation was not used
@@ -114,7 +140,6 @@ class PneumoniaCNNClassifier:
             predictions = self.model.predict(self.testing_images, verbose=0)
             accuracy = self.get_accuracy(predictions)
 
-            # Display the test accuracy of the model
             print(f'Test accuracy of one model: {100 * accuracy:.2f}%')
 
     # Method to get model accuracy by comparing predictions with true testing labels
@@ -126,15 +151,19 @@ class PneumoniaCNNClassifier:
 
         # Iterate through the rounded predictions and compare with corresponding true label
         for i in range(total):
+            # Convert one-hot encoded values into a single number corresponding to the class
+            # for example [0 0 0 1] becomes 3
+            converted_prediction = np.argmax(rounded_predictions[i], axis=None, out=None)
+            converted_label = np.argmax(self.testing_labels[i], axis=None, out=None)
             # Add one to the correct count if there is a match
-            if rounded_predictions[i] == self.testing_labels[i]:
+            if converted_prediction == converted_label:
                 correct += 1
             
         return (correct/total)
 
 
+
 if __name__ == "__main__":
-    # Example usage with cross-validation
-    classifier_with_cross_val = PneumoniaCNNClassifier('./Datasets/pneumoniamnist.npz')
-    classifier_with_cross_val.train_with_cross_validation(epochs=15, batch_size=32, folds=10)
-    # classifier_with_cross_val.train_without_cross_validation(epochs=20, batch_size=32)
+    classifier = PathCNNClassifier('./Datasets/pathmnist.npz')
+    classifier.train_with_cross_validation(epochs=25, batch_size=64, folds=5)
+    # classifier.train_without_cross_validation(epochs=25, batch_size=64)

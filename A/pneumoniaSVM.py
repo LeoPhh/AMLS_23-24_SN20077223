@@ -21,6 +21,13 @@ class PneumoniaSVMClassifier:
         self.validation_labels = pneumonia_dataset['val_labels']
         self.testing_labels = pneumonia_dataset['test_labels']
 
+    # Method to print the unique labels and thair count
+    def print_individual_label_counts(self):
+        unique_values, counts = np.unique(self.training_labels.flatten(), return_counts=True)
+
+        for value, count in zip(unique_values, counts):
+            print(f"{value}: {count}")
+
     # Method to extract Pixel Values and Histograms as features from an array of images
     def extract_features(self, images):
         # Flatten pixel values for each image
@@ -79,3 +86,4 @@ if __name__ == "__main__":
     classifier = PneumoniaSVMClassifier('./Datasets/pneumoniamnist.npz')
     classifier.train_model()
     classifier.validate_and_test_model()
+    
