@@ -28,10 +28,12 @@ class PathCNNClassifier:
 
         self.image_height, self.image_width, self.number_of_channels = self.training_images[0].shape
 
-    # Method to print the unique labels and thair count
+    # Method to print the unique labels and their count
     def print_individual_label_counts(self):
+        # Use numpy to return two arrays: one for the unique values, and another for their count
         unique_values, counts = np.unique(self.training_labels.flatten(), return_counts=True)
 
+        # Display the unique values and their count by zipping the two arrays
         for value, count in zip(unique_values, counts):
             print(f"{value}: {count}")
 
@@ -85,6 +87,10 @@ class PathCNNClassifier:
     def train_with_cross_validation(self, epochs, batch_size, folds):
         print("Training with cross-validation")
 
+        # Concatenate training and validation data for cross validation
+        training_images = np.concatenate((self.training_images, self.validation_images), axis=0)
+        training_labels = np.concatenate((self.training_labels, self.validation_labels), axis=0)
+
         # To store all the models for each fold
         self.models = []
 
@@ -92,20 +98,26 @@ class PathCNNClassifier:
         cross_validation = KFold(n_splits=folds, shuffle=True)
         cross_validation_folds = cross_validation.split(self.training_images, self.training_labels)
 
-        # In the tuple (train_index, val_index), we don't use the val_index because every fold uses the same validation dataset
+        # Iterate through the folds and train the model
         for fold, (train_index, val_index) in enumerate(cross_validation_folds):
             print(f"Training on fold {fold + 1}/{folds}")
-            current_fold_images = self.training_images[train_index]
-            current_fold_labels = self.training_labels[train_index]
+
+            # Create training images dataset for the current fold
+            current_fold_training_images = training_images[train_index]
+            current_fold_training_labels = training_labels[train_index]
+
+            # Create validation images dataset for current fold
+            current_fold_validation_images = training_images[val_index]
+            current_fold_validation_labels = training_labels[val_index]
 
             # Train model on each individual fold (using the same validation data), and append it to the models array
             self.model = self.build_model()
             self.model.fit(
-                current_fold_images,
-                current_fold_labels,
+                current_fold_training_images,
+                current_fold_training_labels,
                 epochs=epochs,
                 batch_size=batch_size,
-                validation_data=(self.validation_images, self.validation_labels)
+                validation_data=(current_fold_validation_images, current_fold_validation_labels)
             )
 
             self.models.append(self.model)

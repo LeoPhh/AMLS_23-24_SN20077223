@@ -32,11 +32,17 @@ class PneumoniaCNNClassifier:
     # Method to build CNN model and add all the layers
     def build_model(self):
         model = Sequential()
+
+        # Hidden layers
         model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(self.image_height, self.image_width, self.number_of_channels)))
         model.add(MaxPooling2D((2, 2)))
+
+        # Flatten and fully connected layers
         model.add(Flatten())
-        model.add(Dense(128, activation='relu'))
+        model.add(Dense(32, activation='relu'))
         model.add(Dense(1, activation='sigmoid'))
+
+        # Compile and return model
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
         return model
 
@@ -61,27 +67,37 @@ class PneumoniaCNNClassifier:
     def train_with_cross_validation(self, epochs, batch_size, folds):
         print("Training with cross-validation")
 
+        # Concatenate training and validation data for cross validation
+        training_images = np.concatenate((self.training_images, self.validation_images), axis=0)
+        training_labels = np.concatenate((self.training_labels, self.validation_labels), axis=0)
+
         # To store all the models for each fold
         self.models = []
 
-        # Prepare cross validation folds with shuffling
+        # Prepare cross validation folds with shuffling (use StratifiedKFold because of class imbalance)
         cross_validation = StratifiedKFold(n_splits=folds, shuffle=True)
-        cross_validation_folds = cross_validation.split(self.training_images, self.training_labels)
+        cross_validation_folds = cross_validation.split(training_images, training_labels)
 
-        # In the tuple (train_index, val_index), we don't use the val_index because every fold uses the same validation dataset
+        # Iterate through the folds and train the model
         for fold, (train_index, val_index) in enumerate(cross_validation_folds):
             print(f"Training on fold {fold + 1}/{folds}")
-            current_fold_images = self.training_images[train_index]
-            current_fold_labels = self.training_labels[train_index]
+
+            # Create training images dataset for the current fold
+            current_fold_training_images = training_images[train_index]
+            current_fold_training_labels = training_labels[train_index]
+
+            # Create validation images dataset for current fold
+            current_fold_validation_images = training_images[val_index]
+            current_fold_validation_labels = training_labels[val_index]
 
             # Train model on each individual fold (using the same validation data), and append it to the models array
             self.model = self.build_model()
             self.model.fit(
-                current_fold_images,
-                current_fold_labels,
+                current_fold_training_images,
+                current_fold_training_labels,
                 epochs=epochs,
                 batch_size=batch_size,
-                validation_data=(self.validation_images, self.validation_labels)
+                validation_data=(current_fold_validation_images, current_fold_validation_labels)
             )
             self.models.append(self.model)
 
@@ -136,5 +152,5 @@ class PneumoniaCNNClassifier:
 if __name__ == "__main__":
     # Example usage with cross-validation
     classifier_with_cross_val = PneumoniaCNNClassifier('./Datasets/pneumoniamnist.npz')
-    classifier_with_cross_val.train_with_cross_validation(epochs=15, batch_size=32, folds=10)
+    classifier_with_cross_val.train_with_cross_validation(epochs=10, batch_size=32, folds=10)
     # classifier_with_cross_val.train_without_cross_validation(epochs=20, batch_size=32)
