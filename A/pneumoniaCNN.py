@@ -1,7 +1,9 @@
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, BatchNormalization, Dropout
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
 from sklearn.model_selection import StratifiedKFold
+from keras.callbacks import EarlyStopping
+import matplotlib.pyplot as plt
 
 class PneumoniaCNNClassifier:
     def __init__(self, dataset_path):
@@ -50,15 +52,22 @@ class PneumoniaCNNClassifier:
     def train_without_cross_validation(self, epochs, batch_size):
         print("Training without cross-validation")
 
+        # Early stopping callback
+        early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+
         # Build model and train it with training and validation datasets
         self.model = self.build_model()
-        self.model.fit(
+        history = self.model.fit(
             self.training_images,
             self.training_labels,
             epochs=epochs,
             batch_size=batch_size,
             validation_data=(self.validation_images, self.validation_labels)
+            # callbacks=[early_stopping]
         )
+
+        # Plot training and validation accuracy/loss
+        self.plot_training_process(history)
 
         # Evaluate the model through the test accuracy
         self.test_model(used_cross_validation=False)
@@ -77,6 +86,9 @@ class PneumoniaCNNClassifier:
         # Prepare cross validation folds with shuffling (use StratifiedKFold because of class imbalance)
         cross_validation = StratifiedKFold(n_splits=folds, shuffle=True)
         cross_validation_folds = cross_validation.split(training_images, training_labels)
+
+        # Early stopping callback
+        early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
         # Iterate through the folds and train the model
         for fold, (train_index, val_index) in enumerate(cross_validation_folds):
@@ -97,7 +109,8 @@ class PneumoniaCNNClassifier:
                 current_fold_training_labels,
                 epochs=epochs,
                 batch_size=batch_size,
-                validation_data=(current_fold_validation_images, current_fold_validation_labels)
+                validation_data=(current_fold_validation_images, current_fold_validation_labels),
+                callbacks=[early_stopping]
             )
             self.models.append(self.model)
 
@@ -147,10 +160,33 @@ class PneumoniaCNNClassifier:
                 correct += 1
             
         return (correct/total)
+    
+    # Method to plot the training and validation accuracy of the model
+    def plot_training_process(self, model_history):
+        # Create subplots with 1 row and 2 columns
+        fig, axs = plt.subplots(1, 2, figsize=(12, 4))
+
+        # Plot training & validation accuracy
+        axs[0].plot(model_history.history['accuracy'])
+        axs[0].plot(model_history.history['val_accuracy'])
+        axs[0].set_title('Training and Validation Accuracy')
+        axs[0].set_xlabel('Epochs')
+        axs[0].set_ylabel('Accuracy')
+        axs[0].legend(['Training', 'Validation'], loc='upper left')
+
+        # Plot training & validation loss
+        axs[1].plot(model_history.history['loss'])
+        axs[1].plot(model_history.history['val_loss'])
+        axs[1].set_title('Training and Validation Loss')
+        axs[1].set_xlabel('Epochs')
+        axs[1].set_ylabel('Loss')
+        axs[1].legend(['Training', 'Validation'], loc='upper right')
+
+        plt.show()
 
 
 if __name__ == "__main__":
     # Example usage with cross-validation
     classifier_with_cross_val = PneumoniaCNNClassifier('./Datasets/pneumoniamnist.npz')
-    classifier_with_cross_val.train_with_cross_validation(epochs=10, batch_size=32, folds=10)
-    # classifier_with_cross_val.train_without_cross_validation(epochs=20, batch_size=32)
+    # classifier_with_cross_val.train_with_cross_validation(epochs=20, batch_size=32, folds=10)
+    classifier_with_cross_val.train_without_cross_validation(epochs=20, batch_size=32)

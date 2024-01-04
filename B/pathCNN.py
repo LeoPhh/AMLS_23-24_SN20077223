@@ -4,6 +4,8 @@ from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 from keras.optimizers.legacy import Adam
 from keras.utils import to_categorical
 from sklearn.model_selection import KFold
+import matplotlib.pyplot as plt
+
 
 class PathCNNClassifier:
     def __init__(self, dataset_path):
@@ -72,13 +74,16 @@ class PathCNNClassifier:
 
         # Build model and train it with training and validation datasets
         self.model = self.build_model()
-        self.model.fit(
+        history = self.model.fit(
             self.training_images,
             self.training_labels,
             epochs=epochs,
             batch_size=batch_size,
             validation_data=(self.validation_images, self.validation_labels)
         )
+
+        # Plot training and validation accuracy/loss
+        self.plot_training_process(history)
 
         # Evaluate the model through the test accuracy
         self.test_model(used_cross_validation=False)
@@ -172,10 +177,32 @@ class PathCNNClassifier:
                 correct += 1
             
         return (correct/total)
+    
+    # Method to plot the training and validation accuracy of the model
+    def plot_training_process(self, model_history):
+        # Create subplots with 1 row and 2 columns
+        fig, axs = plt.subplots(1, 2, figsize=(12, 4))
 
+        # Plot training & validation accuracy
+        axs[0].plot(model_history.history['accuracy'])
+        axs[0].plot(model_history.history['val_accuracy'])
+        axs[0].set_title('Training and Validation Accuracy')
+        axs[0].set_xlabel('Epochs')
+        axs[0].set_ylabel('Accuracy')
+        axs[0].legend(['Training', 'Validation'], loc='upper left')
+
+        # Plot training & validation loss
+        axs[1].plot(model_history.history['loss'])
+        axs[1].plot(model_history.history['val_loss'])
+        axs[1].set_title('Training and Validation Loss')
+        axs[1].set_xlabel('Epochs')
+        axs[1].set_ylabel('Loss')
+        axs[1].legend(['Training', 'Validation'], loc='upper right')
+
+        plt.show()
 
 
 if __name__ == "__main__":
     classifier = PathCNNClassifier('./Datasets/pathmnist.npz')
-    classifier.train_with_cross_validation(epochs=25, batch_size=64, folds=5)
-    # classifier.train_without_cross_validation(epochs=25, batch_size=64)
+    # classifier.train_with_cross_validation(epochs=25, batch_size=64, folds=5)
+    classifier.train_without_cross_validation(epochs=25, batch_size=64)
