@@ -57,17 +57,14 @@ class PneumoniaCNNClassifier:
 
         # Build model and train it with training and validation datasets
         self.model = self.build_model()
-        history = self.model.fit(
+        self.history = self.model.fit(
             self.training_images,
             self.training_labels,
             epochs=epochs,
             batch_size=batch_size,
-            validation_data=(self.validation_images, self.validation_labels)
-            # callbacks=[early_stopping]
+            validation_data=(self.validation_images, self.validation_labels),
+            callbacks=[early_stopping]
         )
-
-        # Plot training and validation accuracy/loss
-        self.plot_training_process(history)
 
         # Evaluate the model through the test accuracy
         self.test_model(used_cross_validation=False)
@@ -162,7 +159,9 @@ class PneumoniaCNNClassifier:
         return (correct/total)
     
     # Method to plot the training and validation accuracy of the model
-    def plot_training_process(self, model_history):
+    # This method can ONLY be used when cross validation is NOT used! Otherwise there will be no self.history variable
+    def plot_training_process(self):
+        model_history = self.history
         # Create subplots with 1 row and 2 columns
         fig, axs = plt.subplots(1, 2, figsize=(12, 4))
 

@@ -6,7 +6,6 @@ from keras.utils import to_categorical
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 
-
 class PathCNNClassifier:
     def __init__(self, dataset_path):
         self.dataset_path = dataset_path
@@ -64,7 +63,7 @@ class PathCNNClassifier:
         model.add(Dense(128, activation='relu'))
         model.add(Dense(9, activation='softmax'))
 
-        model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=Adam(learning_rate=0.002), loss='categorical_crossentropy', metrics=['accuracy'])
         
         return model
 
@@ -74,16 +73,13 @@ class PathCNNClassifier:
 
         # Build model and train it with training and validation datasets
         self.model = self.build_model()
-        history = self.model.fit(
+        self.history = self.model.fit(
             self.training_images,
             self.training_labels,
             epochs=epochs,
             batch_size=batch_size,
             validation_data=(self.validation_images, self.validation_labels)
         )
-
-        # Plot training and validation accuracy/loss
-        self.plot_training_process(history)
 
         # Evaluate the model through the test accuracy
         self.test_model(used_cross_validation=False)
@@ -179,7 +175,9 @@ class PathCNNClassifier:
         return (correct/total)
     
     # Method to plot the training and validation accuracy of the model
-    def plot_training_process(self, model_history):
+    # This method can ONLY be used when cross validation is NOT used! Otherwise there will be no self.history variable
+    def plot_training_process(self):
+        model_history = self.history
         # Create subplots with 1 row and 2 columns
         fig, axs = plt.subplots(1, 2, figsize=(12, 4))
 
