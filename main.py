@@ -12,16 +12,16 @@ if __name__ == "__main__":
     TaskB_CNN = PathCNNClassifier('./Datasets/pathmnist.npz')
 
     # Task A - SVM
-    TaskA_SVM.print_individual_label_counts()
+    # TaskA_SVM.print_individual_label_counts()
     TaskA_SVM.train_model()
     TaskA_SVM.test_model()
 
     # Task A - CNN
-    TaskA_CNN.train_without_cross_validation(epochs=20, batch_size=32)
-    TaskA_CNN.train_with_cross_validation(epochs=20, batch_size=32, folds=10)
+    TaskA_CNN.train_without_cross_validation(epochs=35, batch_size=32)
+    TaskA_CNN.train_with_cross_validation(epochs=40, batch_size=32, folds=10)
 
     # Task B - CNN
-    TaskB_CNN.print_individual_label_counts()
+    # TaskB_CNN.print_individual_label_counts()
     TaskB_CNN.train_without_cross_validation(epochs=25, batch_size=64)
     TaskB_CNN.train_with_cross_validation(epochs=25, batch_size=64, folds=5)
 

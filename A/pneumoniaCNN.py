@@ -63,8 +63,8 @@ class PneumoniaCNNClassifier:
             self.training_labels,
             epochs=epochs,
             batch_size=batch_size,
-            validation_data=(self.validation_images, self.validation_labels),
-            callbacks=[early_stopping]
+            validation_data=(self.validation_images, self.validation_labels)
+            # callbacks=[early_stopping]
         )
 
         # Evaluate the model through the test accuracy
@@ -164,23 +164,25 @@ class PneumoniaCNNClassifier:
     # This method can ONLY be used when cross validation is NOT used! Otherwise there will be no self.history variable
     def plot_training_process(self):
         model_history = self.history
-        # Create subplots with 1 row and 2 columns
-        fig, axs = plt.subplots(1, 2, figsize=(12, 4))
 
         # Plot training & validation accuracy
-        axs[0].plot(model_history.history['accuracy'])
-        axs[0].plot(model_history.history['val_accuracy'])
-        axs[0].set_title('Training and Validation Accuracy')
-        axs[0].set_xlabel('Epochs')
-        axs[0].set_ylabel('Accuracy')
-        axs[0].legend(['Training', 'Validation'], loc='upper left')
+        plt.figure(figsize=(6, 4))
+        plt.plot(model_history.history['accuracy'])
+        plt.plot(model_history.history['val_accuracy'])
+        plt.title('Training and Validation Accuracy')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend(['Training', 'Validation'], loc='upper left')
+        plt.grid()
+        plt.show()
 
         # Plot training & validation loss
-        axs[1].plot(model_history.history['loss'])
-        axs[1].plot(model_history.history['val_loss'])
-        axs[1].set_title('Training and Validation Loss')
-        axs[1].set_xlabel('Epochs')
-        axs[1].set_ylabel('Loss')
-        axs[1].legend(['Training', 'Validation'], loc='upper right')
-
+        plt.figure(figsize=(6, 4))
+        plt.plot(model_history.history['loss'])
+        plt.plot(model_history.history['val_loss'])
+        plt.title('Training and Validation Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend(['Training', 'Validation'], loc='upper right')
+        plt.grid()
         plt.show()
