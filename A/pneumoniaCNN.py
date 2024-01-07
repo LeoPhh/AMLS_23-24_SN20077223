@@ -1,9 +1,10 @@
-import numpy as np
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
-from sklearn.model_selection import StratifiedKFold
 from keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.model_selection import StratifiedKFold
+
 
 class PneumoniaCNNClassifier:
     def __init__(self, dataset_path):
@@ -27,7 +28,7 @@ class PneumoniaCNNClassifier:
         self.image_height, self.image_width = self.training_images[0].shape
         self.number_of_channels = 1  # Because they are grayscale images
 
-    # Method to normalize images to have value between 0 and 1
+    # Method to normalize pixel values in images between 0 and 1
     def normalize_images(self, images):
         return images.astype('float32') / 255.0
 
@@ -50,9 +51,9 @@ class PneumoniaCNNClassifier:
 
     # Method to train the CNN model without cross-validation
     def train_without_cross_validation(self, epochs, batch_size):
-        print("Training without cross-validation")
+        print("Training Task A CNN without cross-validation...")
 
-        # Early stopping callback
+        # Early stopping callback to prevent overfitting
         early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
         # Build model and train it with training and validation datasets
@@ -71,20 +72,20 @@ class PneumoniaCNNClassifier:
 
     # Method to train the CNN model with cross-validation
     def train_with_cross_validation(self, epochs, batch_size, folds):
-        print("Training with cross-validation")
+        print("Training Task A CNN with cross-validation...")
 
         # Concatenate training and validation data for cross validation
         training_images = np.concatenate((self.training_images, self.validation_images), axis=0)
         training_labels = np.concatenate((self.training_labels, self.validation_labels), axis=0)
 
-        # To store all the models for each fold
+        # Empty array to store all the models for each fold
         self.models = []
 
         # Prepare cross validation folds with shuffling (use StratifiedKFold because of class imbalance)
         cross_validation = StratifiedKFold(n_splits=folds, shuffle=True)
         cross_validation_folds = cross_validation.split(training_images, training_labels)
 
-        # Early stopping callback
+        # Early stopping callback to prevent overfitting
         early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
         # Iterate through the folds and train the model
@@ -155,7 +156,8 @@ class PneumoniaCNNClassifier:
             # Add one to the correct count if there is a match
             if rounded_predictions[i] == self.testing_labels[i]:
                 correct += 1
-            
+        
+        # Return accuracy
         return (correct/total)
     
     # Method to plot the training and validation accuracy of the model
@@ -182,10 +184,3 @@ class PneumoniaCNNClassifier:
         axs[1].legend(['Training', 'Validation'], loc='upper right')
 
         plt.show()
-
-
-if __name__ == "__main__":
-    # Example usage with cross-validation
-    classifier_with_cross_val = PneumoniaCNNClassifier('./Datasets/pneumoniamnist.npz')
-    # classifier_with_cross_val.train_with_cross_validation(epochs=20, batch_size=32, folds=10)
-    classifier_with_cross_val.train_without_cross_validation(epochs=20, batch_size=32)

@@ -1,7 +1,8 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from sklearn import svm
 from sklearn.metrics import accuracy_score, classification_report
-import matplotlib.pyplot as plt
+
 
 class PneumoniaSVMClassifier:
     def __init__(self, dataset_path):
@@ -26,13 +27,15 @@ class PneumoniaSVMClassifier:
         # Use numpy to return two arrays: one for the unique values, and another for their count
         unique_values, counts = np.unique(self.training_labels.flatten(), return_counts=True)
 
+        print("Individual label counts:")
+
         # Display the unique values and their count by zipping the two arrays
         for value, count in zip(unique_values, counts):
             print(f"{value}: {count}")
 
     # Method to extract Pixel Values and Histograms as features from an array of images
     def extract_features(self, images):
-        # Flatten pixel values for each image
+        # Extract Pixel Values
         pixel_values = images.reshape(images.shape[0], -1)
 
         # Extract Histograms
@@ -66,6 +69,8 @@ class PneumoniaSVMClassifier:
 
     # Method to train the SVM model
     def train_model(self):
+        print("Training Task A SVM model...")
+
         # Extract features from training and validation images
         training_data_features = self.extract_features(self.training_images)
         validation_data_features = self.extract_features(self.validation_images)
@@ -78,9 +83,9 @@ class PneumoniaSVMClassifier:
         kernels = ['linear', 'poly', 'sigmoid']
 
         # Iterate through all possible hyperparameter combinations and train the SVM model
-        for C in regularization_parameters:
+        for regularization_parameter in regularization_parameters:
             for kernel in kernels:
-                temporary_svm_model = svm.SVC(C = C, kernel=kernel)
+                temporary_svm_model = svm.SVC(C=regularization_parameter, kernel=kernel)
                 temporary_svm_model.fit(training_data_features, self.training_labels.ravel())
 
                 # Evaluate the model on the validation dataset
@@ -88,16 +93,16 @@ class PneumoniaSVMClassifier:
                 validation_accuracy = accuracy_score(self.validation_labels, validation_predictions)
 
                 # Store the hyperparameter combination along with the validation accuracy
-                current_model_results = [C, kernel, validation_accuracy]
+                current_model_results = [regularization_parameter, kernel, validation_accuracy]
                 parameters_and_accuracy.append(current_model_results)
 
         # Extract the best model by finding the one with the highest validation accuracy
         best_model = max(parameters_and_accuracy, key=lambda x: x[2])
-        best_model_C = best_model[0]
+        best_model_regularization_parameter = best_model[0]
         best_model_kernel = best_model[1]
 
         # Train the model with the optimal parameters
-        self.svm_model = svm.SVC(C=best_model_C, kernel=best_model_kernel)
+        self.svm_model = svm.SVC(C=best_model_regularization_parameter, kernel=best_model_kernel)
         self.svm_model.fit(training_data_features, self.training_labels.ravel())
 
 
@@ -114,10 +119,5 @@ class PneumoniaSVMClassifier:
         # Display classification report for test set
         print("\nClassification Report:")
         print(classification_report(self.testing_labels, testing_predictons))
-
-if __name__ == "__main__":
-    classifier = PneumoniaSVMClassifier('./Datasets/pneumoniamnist.npz')
-    classifier.train_model()
-    classifier.test_model()
 
     

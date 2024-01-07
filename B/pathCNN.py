@@ -1,10 +1,12 @@
-import numpy as np
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 from keras.optimizers.legacy import Adam
+from keras.callbacks import EarlyStopping
 from keras.utils import to_categorical
-from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.model_selection import KFold
+
 
 class PathCNNClassifier:
     def __init__(self, dataset_path):
@@ -31,14 +33,20 @@ class PathCNNClassifier:
 
     # Method to print the unique labels and their count
     def print_individual_label_counts(self):
+        # Need to load training labels again so that they are not one-hot-encoded
+        path_dataset = np.load(self.dataset_path)
+        training_labels = path_dataset['train_labels']
+
         # Use numpy to return two arrays: one for the unique values, and another for their count
-        unique_values, counts = np.unique(self.training_labels.flatten(), return_counts=True)
+        unique_values, counts = np.unique(training_labels.flatten(), return_counts=True)
+
+        print("Individual label counts:")
 
         # Display the unique values and their count by zipping the two arrays
         for value, count in zip(unique_values, counts):
             print(f"{value}: {count}")
 
-    # Method to normalize images to have value between 0 and 1
+    # Method to normalize pixel values in images between 0 and 1
     def normalize_images(self, images):
         return images.astype('float32') / 255.0
 
@@ -46,7 +54,7 @@ class PathCNNClassifier:
     def build_model(self):
         model = Sequential()
     
-        # Convolutional layers
+        # Hidden layers
         model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(self.image_height, self.image_width, self.number_of_channels)))
         model.add(MaxPooling2D((2, 2)))
 
@@ -63,13 +71,16 @@ class PathCNNClassifier:
         model.add(Dense(128, activation='relu'))
         model.add(Dense(9, activation='softmax'))
 
+        # Compile and return model
         model.compile(optimizer=Adam(learning_rate=0.002), loss='categorical_crossentropy', metrics=['accuracy'])
-        
         return model
 
     # Train the CNN model without cross-validation
     def train_without_cross_validation(self, epochs, batch_size):
-        print("Training without cross-validation")
+        print("Training Task B CNN without cross-validation...")
+
+        # Early stopping callback to prevent overfitting
+        early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
         # Build model and train it with training and validation datasets
         self.model = self.build_model()
@@ -78,7 +89,8 @@ class PathCNNClassifier:
             self.training_labels,
             epochs=epochs,
             batch_size=batch_size,
-            validation_data=(self.validation_images, self.validation_labels)
+            validation_data=(self.validation_images, self.validation_labels),
+            callbacks=[early_stopping]
         )
 
         # Evaluate the model through the test accuracy
@@ -86,13 +98,13 @@ class PathCNNClassifier:
 
     # Method to train the CNN model with cross-validation
     def train_with_cross_validation(self, epochs, batch_size, folds):
-        print("Training with cross-validation")
+        print("Training Task B CNN with cross-validation...")
 
         # Concatenate training and validation data for cross validation
         training_images = np.concatenate((self.training_images, self.validation_images), axis=0)
         training_labels = np.concatenate((self.training_labels, self.validation_labels), axis=0)
 
-        # To store all the models for each fold
+        # Empty array to store all the models for each fold
         self.models = []
 
         # Prepare cross validation folds with shuffling
@@ -111,6 +123,9 @@ class PathCNNClassifier:
             current_fold_validation_images = training_images[val_index]
             current_fold_validation_labels = training_labels[val_index]
 
+            # Early stopping callback to prevent overfitting
+            early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+
             # Train model on each individual fold (using the same validation data), and append it to the models array
             self.model = self.build_model()
             self.model.fit(
@@ -118,7 +133,8 @@ class PathCNNClassifier:
                 current_fold_training_labels,
                 epochs=epochs,
                 batch_size=batch_size,
-                validation_data=(current_fold_validation_images, current_fold_validation_labels)
+                validation_data=(current_fold_validation_images, current_fold_validation_labels),
+                callbacks=[early_stopping]
             )
 
             self.models.append(self.model)
@@ -171,7 +187,8 @@ class PathCNNClassifier:
             # Add one to the correct count if there is a match
             if converted_prediction == converted_label:
                 correct += 1
-            
+        
+        # Return accuracy
         return (correct/total)
     
     # Method to plot the training and validation accuracy of the model
@@ -198,9 +215,3 @@ class PathCNNClassifier:
         axs[1].legend(['Training', 'Validation'], loc='upper right')
 
         plt.show()
-
-
-if __name__ == "__main__":
-    classifier = PathCNNClassifier('./Datasets/pathmnist.npz')
-    # classifier.train_with_cross_validation(epochs=25, batch_size=64, folds=5)
-    classifier.train_without_cross_validation(epochs=25, batch_size=64)
