@@ -89,8 +89,8 @@ class PathCNNClassifier:
             self.training_labels,
             epochs=epochs,
             batch_size=batch_size,
-            validation_data=(self.validation_images, self.validation_labels)
-            # callbacks=[early_stopping]
+            validation_data=(self.validation_images, self.validation_labels),
+            callbacks=[early_stopping]
         )
 
         # Evaluate the model through the test accuracy
