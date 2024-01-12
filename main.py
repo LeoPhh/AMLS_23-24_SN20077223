@@ -62,14 +62,14 @@ if __name__ == "__main__":
     TaskA_SVM.train_model()
     TaskA_SVM.test_model()
 
-    # # Task A - Train and Test CNN without CV
+    # Task A - Train and Test CNN without CV
     TaskA_CNN.train_without_cross_validation(epochs=35, batch_size=32)
 
-    # # Task A - Train and Test CNN with CV
+    # Task A - Train and Test CNN with CV
     TaskA_CNN.train_with_cross_validation(epochs=40, batch_size=32, folds=10)
 
-    # # Task B - Train and Test CNN without CV
+    # Task B - Train and Test CNN without CV
     TaskB_CNN.train_without_cross_validation(epochs=25, batch_size=64)
 
-    # # Task B - Train and Test CNN with CV
+    # Task B - Train and Test CNN with CV
     TaskB_CNN.train_with_cross_validation(epochs=25, batch_size=64, folds=5)
