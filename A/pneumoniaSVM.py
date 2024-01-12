@@ -105,6 +105,8 @@ class PneumoniaSVMClassifier:
         self.svm_model = svm.SVC(C=best_model_regularization_parameter, kernel=best_model_kernel)
         self.svm_model.fit(training_data_features, self.training_labels.ravel())
 
+        print("Finished training.")
+
 
     # Method to validate and test the SVM model
     def test_model(self):
